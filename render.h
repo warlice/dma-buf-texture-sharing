@@ -30,8 +30,9 @@ void initialize_egl(Display *x11_display, Window x11_window, EGLDisplay *egl_dis
 
     // create an EGL rendering context
     EGLint const attrib_list[] = {
-        EGL_CONTEXT_MAJOR_VERSION, 3,
-        EGL_CONTEXT_MINOR_VERSION, 3,
+        EGL_CONTEXT_CLIENT_VERSION , 2,
+        // EGL_CONTEXT_MAJOR_VERSION, 3,
+        // EGL_CONTEXT_MINOR_VERSION, 3,
         EGL_NONE};
     EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, attrib_list);
 

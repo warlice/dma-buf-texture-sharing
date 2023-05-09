@@ -52,8 +52,8 @@ int main(int argc, char **argv)
     // -----------------------------
 
     // Socket paths for sending/receiving file descriptor and image storage data
-    const char *SERVER_FILE = "/tmp/test_server";
-    const char *CLIENT_FILE = "/tmp/test_client";
+    const char *SERVER_FILE = "/home/warlice/tmp/my_socket1";
+    const char *CLIENT_FILE = "/home/warlice/tmp/test_client";
     // Custom image storage data description to transfer over socket
     struct texture_storage_metadata_t
     {
@@ -76,7 +76,9 @@ int main(int argc, char **argv)
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TEXTURE_DATA_WIDTH, TEXTURE_DATA_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, texture_data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
+       gl_draw_scene(texture);
+        eglSwapBuffers(egl_display, egl_surface);
+        sleep(10);
         // EGL: Create EGL image from the GL texture
         EGLImage image = eglCreateImage(egl_display,
                                         egl_context,
@@ -114,12 +116,12 @@ int main(int argc, char **argv)
         assert(exported);
 
         // Unix Domain Socket: Send file descriptor (texture_dmabuf_fd) and texture storage data (texture_storage_metadata)
-        int sock = create_socket(SERVER_FILE);
-        while (connect_socket(sock, CLIENT_FILE) != 0)
-            ;
-        write_fd(sock, texture_dmabuf_fd, &texture_storage_metadata, sizeof(texture_storage_metadata));
-        close(sock);
-        close(texture_dmabuf_fd);
+        // int sock = create_socket(SERVER_FILE);
+        // while (connect_socket(sock, CLIENT_FILE) != 0)
+        //     ;
+        // write_fd(sock, texture_dmabuf_fd, &texture_storage_metadata, sizeof(texture_storage_metadata));
+        // close(sock);
+        // close(texture_dmabuf_fd);
     }
     else
     {
@@ -127,9 +129,68 @@ int main(int argc, char **argv)
         int texture_dmabuf_fd;
         struct texture_storage_metadata_t texture_storage_metadata;
 
-        int sock = create_socket(CLIENT_FILE);
-        read_fd(sock, &texture_dmabuf_fd, &texture_storage_metadata, sizeof(texture_storage_metadata));
-        close(sock);
+        // int sock = create_socket(CLIENT_FILE);
+        // read_fd(sock, &texture_dmabuf_fd, &texture_storage_metadata, sizeof(texture_storage_metadata));
+        // close(sock);
+
+    int server_fd, client_fd;
+    socklen_t client_len;
+    struct sockaddr_un server_addr, client_addr;
+    char buf[256];
+
+    // 创建 Unix 域套接字
+    server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (server_fd == -1) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    // 指定 Unix 域套接字地址
+    server_addr.sun_family = AF_UNIX;
+    strncpy(server_addr.sun_path, SERVER_FILE, sizeof(server_addr.sun_path) - 1);
+
+    // 绑定 Unix 域套接字地址
+    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+        perror("bind");
+        exit(EXIT_FAILURE);
+    }
+
+    // 监听 Unix 域套接字
+    if (listen(server_fd, 5) == -1) {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Server started, waiting for client...\n");
+
+    // 接受客户端连接请求
+    client_len = sizeof(client_addr);
+    client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+    if (client_fd == -1) {
+        perror("accept");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Client connected\n");
+    // read(client_fd, buf, sizeof(buf));
+    // printf("Received message: %s\n", buf);
+     read_fd(client_fd, &texture_dmabuf_fd, &texture_storage_metadata, sizeof(texture_storage_metadata));
+     close(client_fd);
+    close(server_fd);
+    unlink(SERVER_FILE);
+    // return 0;
+
+    // 读取客户端发送的数据
+    // if (read(client_fd, buf, sizeof(buf)) == -1) {
+    //     perror("read");
+    //     exit(EXIT_FAILURE);
+    // }
+
+    // 关闭套接字
+    // close(client_fd);
+    // close(server_fd);
+    // unlink(SOCKET_NAME);
+
 
         // EGL (extension: EGL_EXT_image_dma_buf_import): Create EGL image from file descriptor (texture_dmabuf_fd) and storage
         // data (texture_storage_metadata)
@@ -172,17 +233,17 @@ int main(int argc, char **argv)
 
         // Update texture data each second to see that the client didn't just copy the texture and is indeed referencing
         // the same texture data.
-        if (is_server)
-        {
-            time_t cur_time = time(NULL);
-            if (last_time < cur_time)
-            {
-                last_time = cur_time;
-                rotate_data(texture_data, TEXTURE_DATA_SIZE);
-                glBindTexture(GL_TEXTURE_2D, texture);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TEXTURE_DATA_WIDTH, TEXTURE_DATA_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, texture_data);
-            }
-        }
+        // if (is_server)
+        // {
+        //     time_t cur_time = time(NULL);
+        //     if (last_time < cur_time)
+        //     {
+        //         last_time = cur_time;
+        //         rotate_data(texture_data, TEXTURE_DATA_SIZE);
+        //         glBindTexture(GL_TEXTURE_2D, texture);
+        //         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TEXTURE_DATA_WIDTH, TEXTURE_DATA_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, texture_data);
+        //     }
+        // }
 
         // Check for errors
         assert(glGetError() == GL_NO_ERROR);
