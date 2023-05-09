@@ -1,6 +1,6 @@
-# Example of inter-process texture sharing with DMA-BUF
+# Example of android sharing texture with linux by using  DMA-BUF
 
-An example of how to share a GL/GLES texture in EGL context between different processes by using DMA-BUF.
+An example of how to share a GL/GLES texture in EGL context between android and linux  processes by using DMA-BUF.
 
 Detailed explanation is in [this blog post](https://blaztinn.gitlab.io/post/dmabuf-texture-sharing/).
 
@@ -21,10 +21,5 @@ $ make
 
 Run:
 
-``` bash
-# Terminal 1
-$ ./dmabufshare server
-
-# Terminal 2
 $ ./dmabufshare client
 ```
